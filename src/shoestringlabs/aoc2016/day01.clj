@@ -63,6 +63,10 @@
 
 (defn distance [pos] (apply + (map #(Math/abs %) pos)))
 
+(defn count-visits [path] (frequencies path))
+
+(defn when-visited-more-than-once [[pos visits]] (when (> visits 1) pos))
+
 (comment
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Part 1
@@ -74,14 +78,16 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Part 2
-  (let [p       (path (read-instructions "day01-puzzle-input.txt") [:north 0 0])
-        visited (into #{} (keep (fn [[x f]] (when (> f 1) x)) (frequencies p)))]
+  (let [p        (path (read-instructions "day01-puzzle-input.txt") [:north 0 0])
+        visited  (into #{} (keep when-visited-more-than-once (count-visits p)))
+        visited? (partial contains? visited)]
     (->> p
-         (filter #(contains? visited %))
-         (map-indexed (fn [ix pos] [ix pos]))
-         (group-by (fn [[_ pos]] pos))
+         (filter visited?)
+         (map-indexed #(vector %1 %2))
+         (group-by #(second %))
          (map (fn [[_ visit]] (second visit)))
-         (sort-by (fn [[ix _]] ix))
+         (sort-by #(first %))
          first
          ((fn [[_ pos]] (distance pos))))))
   ;; => 130
+
