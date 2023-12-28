@@ -45,21 +45,43 @@
 
 (def read-instructions (comp parse-instructions read-resource))
 
-(defn walk [instr state]
+(defn make-path-segment
+  [[_ sx sy] [_ ex ey]]
+  (cond
+    (< sx ex) (for [x (range sx ex  1)] [x sy])
+    (> sx ex) (for [x (range sx ex -1)] [x sy])
+    (< sy ey) (for [y (range sy ey  1)] [sx y])
+    (> sy ey) (for [y (range sy ey -1)] [sx y])))
+
+(defn path [instr [_ x y :as state]]
   (lazy-seq
    (if (empty? instr)
-     [state]
-     (cons state (walk (rest instr) (turn-and-move state (first instr)))))))
+     [[x y]]
+     (let [next-state (turn-and-move state (first instr))]
+       (lazy-cat (make-path-segment state next-state)
+                 (path (rest instr) next-state))))))
+
+(defn distance [pos] (apply + (map #(Math/abs %) pos)))
 
 (comment
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Part 1
-  (let [instructions (read-instructions "day01-puzzle-input.txt")
-        [_ x y] (last (walk instructions [:north 0 0]))]
-    (+ x y))
+  (->> [:north 0 0]
+       (path (read-instructions "day01-puzzle-input.txt"))
+       last
+       distance)
+  ;; => 301
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Part 2
-  )
-
-
+  (let [p       (path (read-instructions "day01-puzzle-input.txt") [:north 0 0])
+        visited (into #{} (keep (fn [[x f]] (when (> f 1) x)) (frequencies p)))]
+    (->> p
+         (filter #(contains? visited %))
+         (map-indexed (fn [ix pos] [ix pos]))
+         (group-by (fn [[_ pos]] pos))
+         (map (fn [[_ visit]] (second visit)))
+         (sort-by (fn [[ix _]] ix))
+         first
+         ((fn [[_ pos]] (distance pos))))))
+  ;; => 130
