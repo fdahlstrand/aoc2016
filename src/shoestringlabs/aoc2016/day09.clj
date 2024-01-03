@@ -3,6 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]))
 
+(declare tokenize)
+
 (defn read-resource [path]
   (slurp (io/resource path)))
 
@@ -19,10 +21,12 @@
   [s]
   (let [[raw l r] (re-find #"\((\d+)x(\d+)\)" s)
         len       (parse-long l)
+        text      (subs s (count raw) (+ len (count raw)))
         token {:type   :marker
                :raw    (subs s 0 (+ len (count raw)))
                :marker raw
-               :text   (subs s (count raw) (+ len (count raw)))
+               :text   text
+               :tokens (tokenize text)
                :rep    (parse-long r)}]
     [token (consume-token s token)]))
 
@@ -43,6 +47,12 @@
     :text   (count (:raw t))
     :marker (* (:rep t) (count (:text t)))))
 
+(defn size-token-v2
+  [t]
+  (case (:type t)
+    :text (count (:raw t))
+    :marker (* (:rep t) (reduce + (map size-token-v2 (:tokens t))))))
+
 (comment
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Part 1
@@ -52,6 +62,13 @@
        (map size-token)
        (reduce +))
   ;; => 70186
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Part 2
+  (->> (read-resource "day09-puzzle-input.txt")
+       str/trim
+       tokenize
+       (map size-token-v2)
+       (reduce +))
+  ;; => 10915059201
   )
-
-
