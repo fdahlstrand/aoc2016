@@ -80,22 +80,34 @@
   [instrs]
   (map make-bot instrs))
 
+(defn instr->bots [instrs]
+  (->> instrs
+       :give
+       make-bots
+       (map (fn [{id :bot-id :as bot}] {id bot}))
+       (into {})))
+
 (defn init-factory
-  [instrs factory]
-  (reduce (fn [f {bot-id :bot v :value}] (give (bot bot-id) v f)) factory instrs))
+  [instrs]
+  (reduce (fn [f {bot-id :bot v :value}] (give (bot bot-id) v f))
+          {:bots (instr->bots instrs) :outputs {}} (:assign instrs)))
 
 (defn hands-full? [[_ {l :left r :right}]] (and l r))
+
+(defn next-bot-with-hands-full
+  [factory]
+  (first (filter hands-full? (:bots factory))))
 
 (defn run-factory
   [s]
   (let [instrs (read-instructions s)
-        new-factory (init-factory (:assign instrs) {:bots (into {} (map (fn [{id :bot-id :as bot}] {id bot}) (make-bots (:give instrs)))) :outputs {}})]
-    (loop [[_ b] (first (filter hands-full? (:bots new-factory)))
+        new-factory (init-factory instrs)]
+    (loop [[_ b] (next-bot-with-hands-full new-factory)
            factory new-factory]
       (if (nil? b)
         factory
         (let [next-factory ((:instr b) factory)]
-          (recur (first (filter hands-full? (:bots next-factory))) next-factory))))))
+          (recur (next-bot-with-hands-full next-factory) next-factory))))))
 
 (comment
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
